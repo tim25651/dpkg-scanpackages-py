@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypeAlias
 
 from pydpkg import Dpkg
+from tqdm import tqdm
 from typing_extensions import override
 
 if TYPE_CHECKING:
@@ -38,6 +39,16 @@ StrPath: TypeAlias = str | PathLike
 
 script_name = "dpkg-scanpackages.py"
 script_version = "0.4.1"
+
+
+@contextmanager
+def smart_open(output: Path | None = None) -> Generator[SupportsWrite[bytes]]:
+    """Open the output file or stdout."""
+    if output is None:
+        yield sys.stdout.buffer
+    else:
+        with output.open("wb") as file:
+            yield file
 
 
 class DpkgInfo:
@@ -119,8 +130,9 @@ class DpkgScanpackages:
         """Get the packages."""
         # get all files
         files = self.binary_path.glob(f"*{self.package_type}")
+        files_ls = list(files)
 
-        for fname in files:
+        for fname in tqdm(files_ls, desc="Scanning packages"):
             # extract the package information
             pkg_info = DpkgInfo(fname)
 
@@ -160,19 +172,11 @@ class DpkgScanpackages:
         if return_list:
             return self.package_list
 
-        @contextmanager
-        def smart_open() -> Generator[SupportsWrite[bytes]]:
-            """Open the output file or stdout."""
-            if self.output is None:
-                yield sys.stdout.buffer
-            else:
-                with self.output.open("wb") as file:
-                    yield file
-
-        with smart_open() as file:
+        with smart_open(self.output) as file:
             for p in self.package_list:
                 p_b = str(p).encode("utf-8")
                 file.write(p_b + b"\n")
+
         return None
 
 
