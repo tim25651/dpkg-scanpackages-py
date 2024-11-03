@@ -39,8 +39,8 @@ optional arguments:
 * v0.3.0
     * `--arch` and `--type` parameter support
 * v0.2.0
-    * `--multiversion` parameter support 
+    * `--multiversion` parameter support
 * v0.1.1
-    * variable name correction 
+    * variable name correction
 * v0.1.0
     * Base functionality. No switches available besides `--help` and `--version`

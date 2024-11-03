@@ -1,3 +1,7 @@
 .DS_Store
 Packages
 /debs
+build
+.*_cache
+__pycache__
+*.egg-info

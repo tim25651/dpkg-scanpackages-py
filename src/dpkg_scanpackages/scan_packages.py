@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Scan packages in a directory and generate a Packages file."""
 # Copyright 2018 Raymond Velasquez
 
@@ -14,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Script: dpkg-scanpackages.py # noqa: ERA001
 # Author: Raymond Velasquez <at.supermamon@gmail.com>
+
 from __future__ import annotations
 
 import argparse
 import sys
 from contextlib import contextmanager
+from importlib.metadata import PackageNotFoundError, version
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeAlias
@@ -36,8 +36,6 @@ if TYPE_CHECKING:
 
 StrPath: TypeAlias = str | PathLike
 
-
-script_name = "dpkg-scanpackages.py"
 script_version = "0.4.1"
 
 
@@ -182,10 +180,12 @@ class DpkgScanpackages:
 
 def print_error(err: ValueError) -> None:
     """Print an error message."""
+    import sys
+
     import termcolor
 
     error_msg = termcolor.colored("error", "red", attrs=["bold"])
-    print(f"{script_name}: {error_msg}: {err}")  # noqa: T201
+    print(f"{sys.argv[0]}: {error_msg}: {err}")  # noqa: T201
     print()  # noqa: T201
     print("Use --help for program usage information.")  # noqa: T201
 
@@ -202,12 +202,17 @@ class ScanPackagesNamespace(argparse.Namespace):
 
 def parse_args() -> ScanPackagesNamespace:
     """Parse command-line arguments."""
+    try:
+        final_script_version = version("dpkg_scanpackages")
+    except PackageNotFoundError:
+        final_script_version = script_version
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-v",
         "--version",
         action="version",
-        version="Debian %(prog)s version " + script_version + ".",
+        version="Debian %(prog)s version " + final_script_version + ".",
         help="show the version.",
     )
     parser.add_argument(
@@ -249,7 +254,7 @@ def parse_args() -> ScanPackagesNamespace:
     return parser.parse_args()  # type: ignore[return-value]
 
 
-def main() -> None:
+def scan_packages() -> None:
     """Main entry point."""
     args = parse_args()
     try:
@@ -262,7 +267,3 @@ def main() -> None:
         ).scan()
     except ValueError as err:
         print_error(err)
-
-
-if __name__ == "__main__":
-    main()
