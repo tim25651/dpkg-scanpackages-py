@@ -129,7 +129,7 @@ class DpkgScanpackages:
     def _get_packages(self) -> None:
         """Get the packages."""
         # get all files
-        files = self.binary_path.glob(f"*{self.package_type}")
+        files = self.binary_path.rglob(f"*.{self.package_type}")
         files_ls = list(files)
 
         for fname in tqdm(files_ls, desc="Scanning packages"):
