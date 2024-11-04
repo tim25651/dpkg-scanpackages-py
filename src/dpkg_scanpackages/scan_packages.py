@@ -18,12 +18,13 @@
 from __future__ import annotations
 
 import argparse
+import glob
+import importlib.util
+import os
 import sys
 from contextlib import contextmanager
 from importlib.metadata import PackageNotFoundError, version
-from os import PathLike
-from pathlib import Path
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
 from pydpkg.dpkg import Dpkg
 from tqdm import tqdm
@@ -34,25 +35,23 @@ if TYPE_CHECKING:
 
     from _typeshed import SupportsWrite
 
-StrPath: TypeAlias = str | PathLike
-
 script_version = "0.4.1"
 
 
 @contextmanager
-def smart_open(output: Path | None = None) -> Generator[SupportsWrite[bytes]]:
+def smart_open(output: str | None = None) -> Generator[SupportsWrite[bytes]]:
     """Open the output file or stdout."""
     if output is None:
         yield sys.stdout.buffer
     else:
-        with output.open("wb") as file:
+        with open(output, "wb") as file:
             yield file
 
 
 class DpkgInfo:
     """Information about a dpkg package."""
 
-    def __init__(self, binary_path: StrPath) -> None:
+    def __init__(self, binary_path: str) -> None:
         """Initialize the class."""
         self.binary_path = binary_path
         self.headers: dict[str, str] = {}
@@ -103,34 +102,35 @@ class DpkgScanpackages:
 
     def __init__(
         self,
-        binary_path: StrPath,
+        binary_path: str,
         multiversion: bool | None = None,
         package_type: str | None = None,
         arch: str | None = None,
-        output: StrPath | None = None,
+        output: str | None = None,
     ) -> None:
         """Initialize the class."""
-        self.binary_path = Path(binary_path)
+        self.binary_path = binary_path
 
         # throw an error if it's an invalid path
-        if not self.binary_path.is_dir():
+        if not os.path.isdir(self.binary_path):
             raise ValueError(f"binary path {self.binary_path} not found")
 
         # options
         self.multiversion = multiversion if multiversion is not None else False
         self.package_type = package_type if package_type is not None else "deb"
         self.arch = arch
-        self.output = Path(output) if output is not None else None
-
+        self.output = output
         self.package_list: list[DpkgInfo] = []
 
     def _get_packages(self) -> None:
         """Get the packages."""
         # get all files
-        files = self.binary_path.rglob(f"*.{self.package_type}")
-        files_ls = list(files)
 
-        for fname in tqdm(files_ls, desc="Scanning packages"):
+        files = glob.glob(
+            f"*.{self.package_type}", root_dir=self.binary_path, recursive=True
+        )
+
+        for fname in tqdm(files, desc="Scanning packages"):
             # extract the package information
             pkg_info = DpkgInfo(fname)
 
@@ -180,11 +180,14 @@ class DpkgScanpackages:
 
 def print_error(err: ValueError) -> None:
     """Print an error message."""
-    import sys
+    # check if termcolor is available
+    tc_spec = importlib.util.find_spec("termcolor")
+    if tc_spec is None:
+        error_msg = "error"
+    else:
+        import termcolor
 
-    import termcolor
-
-    error_msg = termcolor.colored("error", "red", attrs=["bold"])
+        error_msg = termcolor.colored("error", "red", attrs=["bold"])
     print(f"{sys.argv[0]}: {error_msg}: {err}")  # noqa: T201
     print()  # noqa: T201
     print("Use --help for program usage information.")  # noqa: T201
@@ -193,11 +196,11 @@ def print_error(err: ValueError) -> None:
 class ScanPackagesNamespace(argparse.Namespace):
     """Namespace for command-line arguments."""
 
-    binary_path: Path
+    binary_path: str
     multiversion: bool
     arch: str | None
     type: str
-    output: Path | None
+    output: str | None
 
 
 def parse_args() -> ScanPackagesNamespace:
@@ -244,12 +247,12 @@ def parse_args() -> ScanPackagesNamespace:
     parser.add_argument(
         "-o",
         "--output",
-        type=Path,
+        type=str,
         action="store",
         dest="output",
         help="Write to file instead of stdout",
     )
-    parser.add_argument("binary_path", type=Path, help="path to the binary directory")
+    parser.add_argument("binary_path", type=str, help="path to the binary directory")
 
     return parser.parse_args()  # type: ignore[return-value]
 
