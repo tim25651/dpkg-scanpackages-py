@@ -1,13 +1,14 @@
 [project]
 name = "dpkg-scanpackages-py"
 version = "0.4.1"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 authors = [{ name = "Tim Hörmann" }, { email = "t.hoermann@audivir.de" }]
 description = "A fork of supermamon/dpkg-scanpackages-py"
 readme = "README.md"
 
 dependencies = [
   "pydpkg @ git+https://www.github.com/tim25651/python-dpkg.git",
+  "tqdm"
 ]
 
 [project.urls]
@@ -19,7 +20,7 @@ where = ["src"]
 include = ["dpkg_scanpackages*"]
 
 [project.scripts]
-dpkg-scanpackages-py = "dpkg_scanpackages.scan_packages:scan_packages"
+dpkg-scanpackages-py = "dpkg_scanpackages.cli:scan_packages"
 
 [project.optional-dependencies]
 dev = ["mypy", "pytest", "coverage[toml]", "types-tqdm"]

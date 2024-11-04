@@ -1,0 +1,63 @@
+Package: micromamba
+Version: 1.5.8-1
+Architecture: all
+Maintainer: Tim <tihoph@unknown>
+Installed-Size: 13959
+Filename: pool/main/micromamba|1.5.8|apt.deb
+Size: 4811112
+MD5sum: 4e0a3eef41b6e1acf2bfbf6baeffb796
+SHA1: fc4eb1ac04a0aff07de78de990db7b8a114c3bc5
+SHA256: b95a374e54709668fd229e56151a6e368cf9b240058237fdde9a72bdf9574370
+Section: unknown
+Priority: optional
+Homepage: <insert the upstream URL, if relevant>
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+
+Package: micromamba
+Version: 1.5.9-1
+Architecture: all
+Maintainer: unknown <audivir@unknown>
+Installed-Size: 14262
+Filename: pool/main/micromamba|1.5.9|apt.deb
+Size: 4895684
+MD5sum: a1c478c095b8ce66bc75ea3a91b0b972
+SHA1: fc477fd0b162fe0204ce6d12aac4cd5d4971b194
+SHA256: b4999e99a38e66847bb2cca367e78850cd6bb128b68d4551d4bb35b0a0b0073d
+Section: unknown
+Priority: optional
+Homepage: <insert the upstream URL, if relevant>
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+
+Package: micromamba
+Version: 2.0.0-1
+Architecture: all
+Maintainer: Tim <tihoph@unknown>
+Installed-Size: 15118
+Filename: pool/main/micromamba|2.0.0|apt.deb
+Size: 5186644
+MD5sum: e2f897a00dcdc18d3b6de6fcda01417d
+SHA1: 4db0a9aee3353e5d1ed9590b21dd169257e834e5
+SHA256: e1fc417060051a19a38d2798de948da53d941a7dbbd5c49ed7af8a9b4cfdbfc5
+Section: unknown
+Priority: optional
+Homepage: <insert the upstream URL, if relevant>
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+
+Package: micromamba
+Version: 2.0.2-1
+Architecture: all
+Maintainer: unknown <audivir@unknown>
+Installed-Size: 15318
+Filename: pool/main/micromamba|2.0.2|apt.deb
+Size: 5219058
+MD5sum: e7aeec2f2ef7eeb3be36404a26c8398f
+SHA1: 91473f38f47e00f955c9671957ec1c9ab18df8da
+SHA256: 0ecb8e6ad08f71402bc8de9d29e5b2ab004e77daf24d8f0bbe5b004fabe9e3a3
+Section: unknown
+Priority: optional
+Homepage: <insert the upstream URL, if relevant>
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>

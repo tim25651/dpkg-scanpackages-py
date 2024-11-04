@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
-from dpkg_scanpackages.scan_packages import DpkgInfo, DpkgScanpackages, scan_packages
+from dpkg_scanpackages.cli import scan_packages
+from dpkg_scanpackages.scan_packages import DpkgInfo, DpkgScanPackages
 
-__all__ = ["DpkgInfo", "DpkgScanpackages", "scan_packages"]
+__all__ = ["scan_packages", "DpkgInfo", "DpkgScanPackages"]

@@ -17,35 +17,28 @@
 
 from __future__ import annotations
 
-import argparse
-import glob
-import importlib.util
+import hashlib
 import os
-import sys
-from contextlib import contextmanager
-from importlib.metadata import PackageNotFoundError, version
-from typing import TYPE_CHECKING
+from email import message_from_string
+from pathlib import Path
+from typing import IO, TYPE_CHECKING
 
 from pydpkg.dpkg import Dpkg
 from tqdm import tqdm
-from typing_extensions import override
+
+from dpkg_scanpackages.utils import (
+    DpkgInfoHeaders,
+    HasHeaders,
+    multi_open_read,
+    write_headers,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
-    from _typeshed import SupportsWrite
+    from _typeshed import SupportsRead
 
 script_version = "0.4.1"
 
-
-@contextmanager
-def smart_open(output: str | None = None) -> Generator[SupportsWrite[bytes]]:
-    """Open the output file or stdout."""
-    if output is None:
-        yield sys.stdout.buffer
-    else:
-        with open(output, "wb") as file:
-            yield file
+FOUR_MB = 4 * 1024 * 1024
 
 
 class DpkgInfo:
@@ -58,6 +51,7 @@ class DpkgInfo:
         pkg = Dpkg(self.binary_path)
 
         # build the information for the apt repo
+        self.pkg = pkg
         self.headers = pkg.headers
         self.headers["Filename"] = pkg.filename.replace("\\", "/")
         self.headers["Size"] = pkg.filesize
@@ -65,48 +59,58 @@ class DpkgInfo:
         self.headers["SHA1"] = pkg.sha1
         self.headers["SHA256"] = pkg.sha256
 
-    @override
-    def __str__(self) -> str:
-        pretty = ""
-        key_order = [
-            "Package",
-            "Version",
-            "Architecture",
-            "Maintainer",
-            "Depends",
-            "Conflicts",
-            "Breaks",
-            "Replaces",
-            "Filename",
-            "Size",
-            "MD5sum",
-            "SHA1",
-            "SHA256",
-            "Section",
-            "Description",
-        ]
-        # add as per key order
-        for key in key_order:
-            if key in self.headers:
-                pretty = pretty + (f"{key}: {self.headers[key]}\n")
-
-        # add the rest alphabetically
-        for key in sorted(self.headers.keys()):
-            if key not in key_order:
-                pretty = pretty + (f"{key}: {self.headers[key]}\n")
-        return pretty
+        self.headers["4MBSHA256"] = calculate_4mb_sha256(
+            self.binary_path, pkg.filesize, pkg.sha256
+        )
 
 
-class DpkgScanpackages:
+def read_packages_file(fd: SupportsRead[str]) -> list[dict[str, str]]:
+    """Read an existing Packages file."""
+    content = fd.read()
+    sections = content.split("\n\n")
+    return [dict(message_from_string(section)) for section in sections if section]
+
+
+def calculate_4mb_sha256(filename: str, filesize: int, sha256: str) -> str:
+    """Get the SHA256 hash of the first 4MB of the file."""
+    if filesize <= FOUR_MB:
+        return sha256
+    with open(filename, "rb") as file:
+        return hashlib.sha256(file.read(FOUR_MB)).hexdigest()
+
+
+def add_4mb_sha256(input: IO[str] | str, output: IO[str] | str | None) -> None:  # noqa: A002
+    """Helper function to add 4MBSHA256 to an existing Packages file.
+
+    Doesn't check if the packages have changed, just adds the 4MBSHA256 field.
+    Additionally, sorts the packages by package name.
+    """
+    with multi_open_read(input) as read_fd:
+        packages_ls = read_packages_file(read_fd)
+    packages = {elem["Filename"]: elem for elem in packages_ls}
+    packages = dict(sorted(packages.items()))
+
+    for headers in packages.values():
+        if "4MBSHA256" not in headers:
+            headers["4MBSHA256"] = calculate_4mb_sha256(
+                headers["Filename"], int(headers["Size"]), headers["SHA256"]
+            )
+
+    encapsulated = [DpkgInfoHeaders(elem) for elem in packages.values()]
+    write_headers(output, encapsulated)
+
+
+class DpkgScanPackages:
     """Scan packages in a directory and generate a Packages file."""
 
     def __init__(
         self,
         binary_path: str,
-        multiversion: bool | None = None,
-        package_type: str | None = None,
+        multiversion: bool = False,
+        package_type: str = "deb",
         arch: str | None = None,
-        output: str | None = None,
+        output: IO[str] | str | None = None,
+        previous: IO[str] | str | None = None,
     ) -> None:
         """Initialize the class."""
         self.binary_path = binary_path
@@ -116,23 +120,54 @@ class DpkgScanpackages:
             raise ValueError(f"binary path {self.binary_path} not found")
 
         # options
-        self.multiversion = multiversion if multiversion is not None else False
-        self.package_type = package_type if package_type is not None else "deb"
+        self.multiversion = multiversion
+        self.package_type = package_type
         self.arch = arch
         self.output = output
-        self.package_list: list[DpkgInfo] = []
+        self.package_list: list[DpkgInfo | DpkgInfoHeaders] = []
+
+        if previous is None:
+            self.previous = {}
+        else:
+            with multi_open_read(previous) as fd:
+                previous_ls = read_packages_file(fd)
+
+            self.previous = {
+                elem["Filename"]: DpkgInfoHeaders(elem) for elem in previous_ls
+            }
+            self.previous = dict(sorted(self.previous.items()))
+
+    @classmethod
+    def _is_equal(cls, curr: HasHeaders, prev: HasHeaders) -> bool:
+        """Check if the file is equal to the previous."""
+        prev_4mb_sha256 = prev.headers.get("4MBSHA256")
+        prev_size_str = prev.headers.get("Size")
+        if prev_4mb_sha256 is None or prev_size_str is None:
+            return False
+
+        prev_size = int(prev_size_str)
+        curr_size = int(curr.headers["Size"])
+        curr_4mb_sha256 = curr.headers["4MBSHA256"]
+        return (prev_4mb_sha256 == curr_4mb_sha256) and (prev_size == curr_size)
 
     def _get_packages(self) -> None:
         """Get the packages."""
         # get all files
 
-        files = glob.glob(
-            f"*.{self.package_type}", root_dir=self.binary_path, recursive=True
+        files = sorted(
+            str(f.relative_to(self.binary_path))
+            for f in Path(self.binary_path).rglob(f"*.{self.package_type}")
         )
 
         for fname in tqdm(files, desc="Scanning packages"):
             # extract the package information
             pkg_info = DpkgInfo(fname)
+            prev = self.previous.get(fname)
+
+            if prev is not None and self._is_equal(pkg_info, prev):
+                print("Reusing previous package info for", fname)  # noqa: T201
+                self.package_list.append(prev)
+                continue
 
             # if arch is defined and does not match package, move on to the next
             if (
@@ -157,116 +192,22 @@ class DpkgScanpackages:
                     self.package_list.append(pkg_info)
                 else:
                     # compare versions and add if newer
-                    matched_index = matched_items[0][0]
-                    matched_item = matched_items[0][1]
+                    matched_index, matched_item = matched_items[0]
 
                     dpkg = Dpkg(pkg_info.headers["Filename"])
                     if dpkg.compare_version_with(matched_item.headers["Version"]) == 1:
                         self.package_list[matched_index] = pkg_info
+                    else:  # pragma: no cover
+                        print("Skipping older version of", fname)  # noqa: T201
 
-    def scan(self, return_list: bool = False) -> list[DpkgInfo] | None:
+    def scan(
+        self, return_list: bool = False
+    ) -> list[DpkgInfo | DpkgInfoHeaders] | None:
         """Scan the packages."""
         self._get_packages()
         if return_list:
             return self.package_list
 
-        with smart_open(self.output) as file:
-            for p in self.package_list:
-                p_b = str(p).encode("utf-8")
-                file.write(p_b + b"\n")
+        write_headers(self.output, self.package_list)
 
         return None
-
-
-def print_error(err: ValueError) -> None:
-    """Print an error message."""
-    # check if termcolor is available
-    tc_spec = importlib.util.find_spec("termcolor")
-    if tc_spec is None:
-        error_msg = "error"
-    else:
-        import termcolor
-
-        error_msg = termcolor.colored("error", "red", attrs=["bold"])
-    print(f"{sys.argv[0]}: {error_msg}: {err}")  # noqa: T201
-    print()  # noqa: T201
-    print("Use --help for program usage information.")  # noqa: T201
-
-
-class ScanPackagesNamespace(argparse.Namespace):
-    """Namespace for command-line arguments."""
-
-    binary_path: str
-    multiversion: bool
-    arch: str | None
-    type: str
-    output: str | None
-
-
-def parse_args() -> ScanPackagesNamespace:
-    """Parse command-line arguments."""
-    try:
-        final_script_version = version("dpkg_scanpackages")
-    except PackageNotFoundError:
-        final_script_version = script_version
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-v",
-        "--version",
-        action="version",
-        version="Debian %(prog)s version " + final_script_version + ".",
-        help="show the version.",
-    )
-    parser.add_argument(
-        "-m",
-        "--multiversion",
-        default=False,
-        action="store_true",
-        dest="multiversion",
-        help="allow multiple versions of a single package.",
-    )
-    parser.add_argument(
-        "-a",
-        "--arch",
-        type=str,
-        default=None,
-        action="store",
-        dest="arch",
-        help="architecture to scan for.",
-    )
-    parser.add_argument(
-        "-t",
-        "--type",
-        type=str,
-        default="deb",
-        action="store",
-        dest="type",
-        help="scan for <type> packages (default is 'deb').",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        action="store",
-        dest="output",
-        help="Write to file instead of stdout",
-    )
-    parser.add_argument("binary_path", type=str, help="path to the binary directory")
-
-    return parser.parse_args()  # type: ignore[return-value]
-
-
-def scan_packages() -> None:
-    """Main entry point."""
-    args = parse_args()
-    try:
-        DpkgScanpackages(
-            binary_path=args.binary_path,
-            multiversion=args.multiversion,
-            arch=args.arch,
-            package_type=args.type,
-            output=args.output,
-        ).scan()
-    except ValueError as err:
-        print_error(err)

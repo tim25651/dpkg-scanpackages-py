@@ -1,0 +1,16 @@
+Package: micromamba
+Version: 2.0.2-1
+Architecture: all
+Maintainer: unknown <audivir@unknown>
+Installed-Size: 15318
+Filename: pool/main/micromamba|2.0.2|apt.deb
+Size: 5219058
+MD5sum: e7aeec2f2ef7eeb3be36404a26c8398f
+SHA1: 91473f38f47e00f955c9671957ec1c9ab18df8da
+SHA256: 0ecb8e6ad08f71402bc8de9d29e5b2ab004e77daf24d8f0bbe5b004fabe9e3a3
+Section: unknown
+Priority: optional
+Homepage: <insert the upstream URL, if relevant>
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+4MBSHA256: c02f99a0bd325c4aa311142b2d2d5420889d60a2b59ec992c823ce4761c48e05

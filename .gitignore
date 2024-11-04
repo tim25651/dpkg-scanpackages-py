@@ -5,3 +5,4 @@ build
 .*_cache
 __pycache__
 *.egg-info
+.coverage
