@@ -7,7 +7,7 @@ description = "A fork of supermamon/dpkg-scanpackages-py"
 readme = "README.md"
 
 dependencies = [
-  "pydpkg"
+  "pydpkg @ git+https://www.github.com/tim25651/dpkg-py"
 ]
 
 [project.urls]

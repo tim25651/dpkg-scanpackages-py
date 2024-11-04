@@ -25,7 +25,7 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeAlias
 
-from pydpkg import Dpkg
+from pydpkg.dpkg import Dpkg
 from tqdm import tqdm
 from typing_extensions import override
 
