@@ -159,8 +159,9 @@ class DpkgScanPackages:
         """Get the packages."""
         # get all files
 
+        cwd = Path.cwd()
         files = sorted(
-            str(f.relative_to(self.binary_path))
+            str(f.relative_to(cwd))
             for f in Path(self.binary_path).rglob(f"*.{self.package_type}")
         )
 
