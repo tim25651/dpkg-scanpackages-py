@@ -44,7 +44,7 @@ FOUR_MB = 4 * 1024 * 1024
 class DpkgInfo:
     """Information about a dpkg package."""
 
-    def __init__(self, binary_path: str) -> None:
+    def __init__(self, binary_path: str, short_sha256: str | None = None) -> None:
         """Initialize the class."""
         self.binary_path = binary_path
         self.headers: dict[str, str] = {}
@@ -59,9 +59,12 @@ class DpkgInfo:
         self.headers["SHA1"] = pkg.sha1
         self.headers["SHA256"] = pkg.sha256
 
-        self.headers["4MBSHA256"] = calculate_4mb_sha256(
-            self.binary_path, pkg.filesize, pkg.sha256
-        )
+        if short_sha256 is None:
+            self.headers["4MBSHA256"] = calculate_4mb_sha256(
+                self.binary_path, pkg.filesize, pkg.sha256
+            )
+        else:
+            self.headers["4MBSHA256"] = short_sha256
 
 
 def read_packages_file(fd: SupportsRead[str]) -> list[dict[str, str]]:
@@ -71,9 +74,11 @@ def read_packages_file(fd: SupportsRead[str]) -> list[dict[str, str]]:
     return [dict(message_from_string(section)) for section in sections if section]
 
 
-def calculate_4mb_sha256(filename: str, filesize: int, sha256: str) -> str:
+def calculate_4mb_sha256(
+    filename: str, filesize: int, sha256: str | None = None
+) -> str:
     """Get the SHA256 hash of the first 4MB of the file."""
-    if filesize <= FOUR_MB:
+    if (filesize <= FOUR_MB) and sha256:
         return sha256
     with open(filename, "rb") as file:
         return hashlib.sha256(file.read(FOUR_MB)).hexdigest()
@@ -161,13 +166,17 @@ class DpkgScanPackages:
 
         for fname in tqdm(files, desc="Scanning packages"):
             # extract the package information
-            pkg_info = DpkgInfo(fname)
+            size = os.path.getsize(fname)
+            short_sha256 = calculate_4mb_sha256(fname, size)
+            curr = DpkgInfoHeaders({"Size": str(size), "4MBSHA256": short_sha256})
             prev = self.previous.get(fname)
 
-            if prev is not None and self._is_equal(pkg_info, prev):
+            if prev is not None and self._is_equal(curr, prev):
                 print("Reusing previous package info for", fname)  # noqa: T201
                 self.package_list.append(prev)
                 continue
+
+            pkg_info = DpkgInfo(fname, short_sha256)
 
             # if arch is defined and does not match package, move on to the next
             if (
