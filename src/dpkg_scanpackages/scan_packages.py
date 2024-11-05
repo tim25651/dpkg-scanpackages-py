@@ -161,7 +161,7 @@ class DpkgScanPackages:
 
         cwd = Path.cwd()
         files = sorted(
-            str(f.relative_to(cwd))
+            str(f.absolute().relative_to(cwd))
             for f in Path(self.binary_path).rglob(f"*.{self.package_type}")
         )
 
