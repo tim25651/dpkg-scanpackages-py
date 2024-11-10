@@ -1,6 +1,7 @@
 # %%
 """Find the key order."""
 
+# ruff: noqa: PTH123
 from __future__ import annotations
 
 from itertools import pairwise
@@ -15,8 +16,6 @@ ls: list[dict[str, str]] = []
 for pkg_file in pkg_files:
     with open(pkg_file) as f:
         ls.extend(read_packages_file(f))
-
-# %%
 
 keys = [
     "Package",
@@ -137,4 +136,3 @@ too_much = [
 too_much_set = set(too_much)
 orig_sorted = [x for x in keys if x not in too_much_set]
 print(orig_sorted)
-# %%

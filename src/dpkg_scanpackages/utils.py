@@ -1,8 +1,8 @@
 """Utility functions for dpkg-scanpackages."""
 
+# ruff: noqa: PTH109, PTH123
 from __future__ import annotations
 
-import os
 import sys
 from contextlib import contextmanager
 from typing import IO, TYPE_CHECKING, Protocol
@@ -121,14 +121,3 @@ def multi_open_write(
             yield file
     else:
         yield output
-
-
-@contextmanager
-def change_cwd(path: str) -> Generator[None]:
-    """Change the current working directory temporarily."""
-    old_cwd = os.getcwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(old_cwd)

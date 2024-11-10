@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from io import StringIO
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from dpkg_scanpackages.scan_packages import DpkgScanPackages
-from dpkg_scanpackages.utils import change_cwd
 
+if TYPE_CHECKING:
+    from .conftest import Helpers
 CURR_DIR = Path(__file__).parent
 EXAMPLE_PATH = CURR_DIR / "ExamplePackages"
 FOUR_MB_PATH = CURR_DIR / "4MBPackages"
@@ -29,18 +31,18 @@ def test_dpkg_scan_packages_bad_path() -> None:
         DpkgScanPackages(binary_path="/nonexisting")
 
 
-def test_dpkg_scan_packages_bad_other_arch() -> None:
-    with change_cwd(str(CURR_DIR)):
+def test_dpkg_scan_packages_bad_other_arch(helpers: Helpers) -> None:
+    with helpers.change_cwd(str(CURR_DIR)):
         scanned = DpkgScanPackages(binary_path=str(CURR_DIR), arch="amd64")
         scanned._get_packages()  # noqa: SLF001
 
     assert not scanned.package_list
 
 
-def test_scan(orig_packages: str, four_mb_packages: str) -> None:
+def test_scan(orig_packages: str, four_mb_packages: str, helpers: Helpers) -> None:
     output = StringIO()
 
-    with change_cwd(str(CURR_DIR)):
+    with helpers.change_cwd(str(CURR_DIR)):
         DpkgScanPackages(
             binary_path=str(CURR_DIR), multiversion=True, output=output
         ).scan()
@@ -52,10 +54,10 @@ def test_scan(orig_packages: str, four_mb_packages: str) -> None:
     assert full_content == four_mb_packages
 
 
-def test_scan_no_multiversion(only_newest_packages: str) -> None:
+def test_scan_no_multiversion(only_newest_packages: str, helpers: Helpers) -> None:
     output = StringIO()
 
-    with change_cwd(str(CURR_DIR)):
+    with helpers.change_cwd(str(CURR_DIR)):
         DpkgScanPackages(
             binary_path=str(CURR_DIR), multiversion=False, output=output
         ).scan()
@@ -65,11 +67,11 @@ def test_scan_no_multiversion(only_newest_packages: str) -> None:
 
 
 def test_scan_previous_and_return_list(
-    four_mb_packages: str, capsys: pytest.CaptureFixture[str]
+    four_mb_packages: str, capsys: pytest.CaptureFixture[str], helpers: Helpers
 ) -> None:
     output = StringIO()
 
-    with change_cwd(str(CURR_DIR)):
+    with helpers.change_cwd(str(CURR_DIR)):
         scanned1 = DpkgScanPackages(
             binary_path=str(CURR_DIR),
             multiversion=True,
@@ -84,7 +86,7 @@ def test_scan_previous_and_return_list(
 
     assert full_content == four_mb_packages
 
-    with change_cwd(str(CURR_DIR)):
+    with helpers.change_cwd(str(CURR_DIR)):
         scanned2 = DpkgScanPackages(
             binary_path=str(CURR_DIR),
             multiversion=True,

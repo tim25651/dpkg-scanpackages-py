@@ -1,4 +1,5 @@
 """Scan packages in a directory and generate a Packages file."""
+
 # Copyright 2018 Raymond Velasquez
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,8 @@
 # limitations under the License.
 
 # Author: Raymond Velasquez <at.supermamon@gmail.com>
+
+# ruff: noqa: PTH112, PTH123, PTH202
 
 from __future__ import annotations
 
@@ -142,8 +145,8 @@ class DpkgScanPackages:
             }
             self.previous = dict(sorted(self.previous.items()))
 
-    @classmethod
-    def _is_equal(cls, curr: HasHeaders, prev: HasHeaders) -> bool:
+    @staticmethod
+    def _is_equal(curr: HasHeaders, prev: HasHeaders) -> bool:
         """Check if the file is equal to the previous."""
         prev_4mb_sha256 = prev.headers.get("4MBSHA256")
         prev_size_str = prev.headers.get("Size")

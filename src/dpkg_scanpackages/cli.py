@@ -3,6 +3,7 @@
 Usage:
     dpkg-scanpackages [-m] [-a <arch>] [-t <type>] [-o <output>] <binary_path>
 """
+# pragma: no cover
 
 from __future__ import annotations
 

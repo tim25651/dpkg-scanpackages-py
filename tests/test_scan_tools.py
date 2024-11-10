@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from io import StringIO
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -15,7 +16,10 @@ from dpkg_scanpackages.scan_packages import (
     calculate_4mb_sha256,
     read_packages_file,
 )
-from dpkg_scanpackages.utils import DpkgInfoHeaders, change_cwd
+from dpkg_scanpackages.utils import DpkgInfoHeaders
+
+if TYPE_CHECKING:
+    from .conftest import Helpers
 
 # OrigPackages - Created with dpkg-scanpackages (1.12.1)
 # Packages - OrigPackages with appended 4MBSHA256: lines
@@ -28,10 +32,10 @@ NEWEST_PATH = CURR_DIR / "NewestPackages"
 DEB_PATH = CURR_DIR / "pool/main/micromamba|1.5.8|apt.deb"
 
 
-def test_dpkg_info(example_headers: dict[str, str | int]) -> None:
+def test_dpkg_info(example_headers: dict[str, str | int], helpers: Helpers) -> None:
     example_headers["Size"] = int(example_headers["Size"])
 
-    with change_cwd(str(CURR_DIR)):
+    with helpers.change_cwd(str(CURR_DIR)):
         pkg = DpkgInfo(str(DEB_PATH.relative_to(CURR_DIR)))
 
     sorted_headers = dict(sorted(pkg.headers.items()))
@@ -63,10 +67,10 @@ def test_calculate_4mb_sha256(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("path", [ORIG_PATH, FOUR_MB_PATH])
-def test_add_4mb(path: Path, four_mb_packages: str) -> None:
+def test_add_4mb(path: Path, four_mb_packages: str, helpers: Helpers) -> None:
     output = StringIO()
 
-    with change_cwd(str(CURR_DIR)):
+    with helpers.change_cwd(str(CURR_DIR)):
         add_4mb_sha256(str(path), output)
 
     full_content = output.getvalue()

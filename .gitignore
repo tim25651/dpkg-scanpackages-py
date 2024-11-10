@@ -1,8 +1,61 @@
-.DS_Store
-Packages
-/debs
+# pyproject-tools
+
+
+
+# pyproject-tools
+
+# Nox
+.nox
+noxfile.py
+
+# Wheels
+*.whl
+
+# Coverage files
+.cov*
+!.coveragerc
+htmlcov
+
+# Cache files
+.mypy_cache
+.pytest_cache
+.ruff_cache
+
+# Python file
+*.egg-info
+__pycache__
 build
-.*_cache
+dist
+
+# Sphinx files
+/docs/build
+/docs/source/_static/
+/docs/source/_autosummary/
+build
 __pycache__
 *.egg-info
-.coverage
+
+# VSCode files
+.vscode
+
+# macOS files
+.DS_Store
+._.DS_Store
+
+# Windows directories
+Thumbs.db
+desktop.ini
+
+# Local files
+input
+output
+wd*
+
+# Notes
+*.idea
+template
+
+# Temporary files
+*.bak
+*.swp
+*.tmp

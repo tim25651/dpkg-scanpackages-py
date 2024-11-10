@@ -1,13 +1,21 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# pyproject-tools
+
 [project]
 name = "dpkg-scanpackages-py"
 version = "0.4.1"
-requires-python = ">=3.8"
-authors = [{ name = "Tim Hörmann" }, { email = "t.hoermann@audivir.de" }]
+requires-python = ">=3.9"
+authors = [
+  { name = "Raymond Velasquez", email = "at.supermamon@gmail.com" },
+  { name = "Tim Hörmann", email = "t.hoermann@audivir.de" }]
 description = "A fork of supermamon/dpkg-scanpackages-py"
 readme = "README.md"
 
 dependencies = [
-  "pydpkg @ git+https://www.github.com/tim25651/python-dpkg.git",
+  "pydpkg @ git+https://www.github.com/memory/python-dpkg.git",
   "tqdm"
 ]
 
@@ -25,25 +33,15 @@ dpkg-scanpackages-py = "dpkg_scanpackages.cli:scan_packages"
 [project.optional-dependencies]
 dev = ["mypy", "pytest", "coverage[toml]", "types-tqdm"]
 
-[tool.pytest.ini_options]
-minversion = "8.0"
-addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
-xfail_strict = true
-log_cli_level = "INFO"
-filterwarnings = [
-  "error",
-  "ignore::pytest.PytestCacheWarning",
-  "ignore::DeprecationWarning",
-]
-testpaths = ["tests"]
+# pyproject-tools
 
 [tool.mypy]
-python_version = "3.10" # CHANGE: PYTHON VERSION
-enable_error_code = '''type-arg,no-untyped-def,redundant-cast,redundant-self,comparison-overlap,
+python_version = "3.10"
+enable_error_code = """type-arg,no-untyped-def,redundant-cast,redundant-self,comparison-overlap,
                     no-untyped-call,no-any-return,no-any-unimported,unreachable,redundant-expr,
                     possibly-undefined,truthy-bool,truthy-iterable,ignore-without-code,
-                    unused-awaitable,unused-ignore,explicit-override,unimported-reveal'''
-disable_error_code = 'import-untyped'
+                    unused-awaitable,unused-ignore,explicit-override,unimported-reveal"""
+disable_error_code = "import-untyped"
 disallow_untyped_calls = true
 disallow_untyped_defs = true
 warn_unused_ignores = true
@@ -56,22 +54,41 @@ exclude = ["build", "docs"]
 source = ["src"]
 command_line = "-m pytest"
 branch = true
+omit = ["cli.py", "__main__.py"]
 
 [tool.coverage.report]
 exclude_also = ["if TYPE_CHECKING:", 'if __name__ == "__main__":']
 fail_under = 100
 show_missing = true
 
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+log_cli_level = "INFO"
+filterwarnings = [
+  "error",
+  "ignore::pytest.PytestCacheWarning",
+  "ignore::DeprecationWarning",
+]
+testpaths = ["tests"]
+
+[tool.vulture]
+ignore_names = ["_*", "unused_*"]
+paths = [".whitelist", "src"]
+make_whitelist = true
+sort_by_size = true
+verbose = false
+
 [tool.ruff]
 fix = true
 show-fixes = true
 
-exclude = [".git", ".idea", ".mypy_cache", ".tox", ".venv"]
+exclude = [".git", ".idea", ".mypy_cache", ".tox", ".venv", ".nox"]
 
-target-version = "py310" # CHANGE: PYTHON VERSION
+target-version = "py310"
 line-length = 88
 indent-width = 4
-
 
 [tool.ruff.format]
 quote-style = "double"
@@ -82,64 +99,29 @@ skip-magic-trailing-comma = true
 dummy-variable-rgx = "^(dummy_.*|unused_.*|_)$"
 
 select = ["ALL"]
+
 fixable = ["ALL"]
-# extend-select = [
-#   "B",           # flake8-bugbear
-#   "I",           # isort
-#   "ARG",         # flake8-unused-arguments
-#   "C4",          # flake8-comprehensions
-#   "EM",          # flake8-errmsg
-#   "ICN",         # flake8-import-conventions
-#   "G",           # flake8-logging-format
-#   "PGH",         # pygrep-hooks
-#   "PIE",         # flake8-pie
-#   "PL",          # pylint
-#   "PT",          # flake8-pytest-style
-#   "PTH",         # flake8-use-pathlib
-#   "RET",         # flake8-return
-#   "RUF",         # Ruff-specific
-#   "SIM",         # flake8-simplify
-#   "T20",         # flake8-print
-#   "UP",          # pyupgrade
-#   "YTT",         # flake8-2020
-#   "EXE",         # flake8-executable
-#   "NPY",         # NumPy specific rules
-#   "PD",          # pandas-vet
-# ]
-#ignore = [
-#  "PLR09",    # Too many X
-#  "PLR2004",  # Magic comparison
-#]
+
 ignore = [
   "ISC001", # implicit-str-concat
   "COM812", # missing-trailing-comma
-
   # ALLOW PICKLE USE
   "S301", # `pickle` and modules that wrap it can be unsafe when used to deserialize untrusted data, possible security issue
-
   # IGNORE TODO
   "TD002",  # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
   "TD003",  # Missing issue link on the line following this TODO
   "FIX002", # Line contains TODO, consider resolving the issue
-
   "FBT001", # Boolean-typed positional argument in function definition
   "FBT002", # Boolean default positional argument
   "FBT003", # Boolean positional value in function call
-
   # "T201",  # `print` found
-
   "NPY002", # Replace legacy `np.random.permutation` call with `np.random.Generator.permutation`
-
   "ANN401", # Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
-
-  ## WE NEED TO REMOVE THESE LATER
-
   # EXCEPTIONS
   "EM101",  # Exception must not use a string literal, assign to variable first
   "EM102",  # Exception must not use an f-string literal, assign to variable first
   "TRY003", # Avoid specifying long messages outside the exception class
   "TRY300", # Use of else blocks in try/except
-
   # DOCSTRINGS
   #"D102",  # Missing docstring in public method
   #"D103",  # Missing docstring in public function
@@ -147,16 +129,6 @@ ignore = [
   # "D107",  # Missing docstring in `__init__`
   #"D415",  # First line should end with a period, question mark, or exclamation point
 ]
-
-# Ignore these when needed
-# "A001"      # builtin-variable-shadowing
-# "ERA001",   # commented-out-code
-# "E501",     # line-too-long
-# "PLR2004"   # magic-value-comparison
-# "SLF001",   # private-member-access
-# "SLOT000"   # no-slots-in-str-subclass
-# "TCH001",   # typing-only-first-party-import
-# "TCH002"    # typing-only-third-party-import
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -177,15 +149,9 @@ split-on-trailing-comma = false
 
 # conf.py automatically created by Sphinx
 "docs/conf.py" = ["INP001", "D100", "ERA001", "A"]
+"noxfile.py" = ["INP001"]
 
 # Test files do not need to have docstrings at each test function
 # S101: assert, PLR2004: magic value comparison, T20: print statements
 "**/test_*.py" = ["INP001", "PLR2004", "S101", "D101", "D102", "D103", "T20"]
 "tests/**" = ["INP001", "PLR2004", "S101", "D101", "D102", "D103", "T20"]
-
-[tool.vulture]
-ignore_names = ["_*", "unused_*"]
-paths = ["src", ".whitelist"]
-make_whitelist = true
-sort_by_size = true
-verbose = false

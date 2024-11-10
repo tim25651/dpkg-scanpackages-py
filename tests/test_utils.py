@@ -1,6 +1,6 @@
 """Tests for the dpkg_scanpackages.utils module."""
 
-# ruff: noqa: S108
+# ruff: noqa: S108, PTH109
 from __future__ import annotations
 
 import os
@@ -12,7 +12,6 @@ import pytest
 
 from dpkg_scanpackages.utils import (
     DpkgInfoHeaders,
-    change_cwd,
     format_headers,
     multi_open_read,
     multi_open_write,
@@ -22,12 +21,27 @@ from dpkg_scanpackages.utils import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from .conftest import Helpers
 
-def test_change_cwd() -> None:
+DARWIN_TMP = "/private/tmp"
+LINUX_TMP = "/tmp"
+
+
+@pytest.fixture
+def tmp() -> str:
+    """Return the system's temporary directory."""
+    if sys.platform not in {"darwin", "linux"}:
+        raise NotImplementedError("Unsupported platform")
+
+    return DARWIN_TMP if sys.platform == "darwin" else LINUX_TMP
+
+
+def test_change_cwd(tmp: str, helpers: Helpers) -> None:
     curr_cwd = os.getcwd()
-    assert curr_cwd != "/tmp"
-    with change_cwd("/tmp"):
-        assert os.getcwd() == "/tmp"
+
+    assert curr_cwd != tmp
+    with helpers.change_cwd(tmp):
+        assert os.getcwd() == tmp
     assert os.getcwd() == curr_cwd
 
 

@@ -1,10 +1,18 @@
 """Pytest fixtures for dpkg-scanpackages-py tests."""
 
+# ruff: noqa: PTH109
 from __future__ import annotations
 
+import os
+from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
 
 CURR_DIR = Path(__file__).parent
 EXAMPLE_PATH = CURR_DIR / "ExamplePackages"
@@ -74,3 +82,23 @@ def example_headers() -> dict[str, str]:
  <insert long description, indented with spaces>""",
         "4MBSHA256": "eb32bb6537d6d822ef3f34dfdb33c3037c5d00f64fadb6aefccf785bbe29b43b",
     }
+
+
+class Helpers:
+    """Helper functions for testing."""
+
+    @staticmethod
+    @contextmanager
+    def change_cwd(path: str) -> Generator[None]:
+        """Change the current working directory temporarily."""
+        old_cwd = os.getcwd()
+        os.chdir(path)
+        try:
+            yield
+        finally:
+            os.chdir(old_cwd)
+
+
+@pytest.fixture
+def helpers() -> Helpers:
+    return Helpers()
