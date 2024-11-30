@@ -118,7 +118,7 @@ class DpkgScanPackages:
         package_type: str = "deb",
         arch: str | None = None,
         output: IO[str] | str | None = None,
-        previous: IO[str] | str | None = None,
+        previous: IO[str] | str | tuple[str, ...] | None = None,
     ) -> None:
         """Initialize the class."""
         self.binary_path = binary_path
@@ -139,7 +139,6 @@ class DpkgScanPackages:
         else:
             with multi_open_read(previous) as fd:
                 previous_ls = read_packages_file(fd)
-
             self.previous = {
                 elem["Filename"]: DpkgInfoHeaders(elem) for elem in previous_ls
             }

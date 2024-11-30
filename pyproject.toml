@@ -54,7 +54,6 @@ exclude = ["build", "docs"]
 source = ["src"]
 command_line = "-m pytest"
 branch = true
-omit = ["cli.py", "__main__.py"]
 
 [tool.coverage.report]
 exclude_also = ["if TYPE_CHECKING:", 'if __name__ == "__main__":']

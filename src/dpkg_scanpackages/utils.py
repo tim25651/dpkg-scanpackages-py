@@ -3,6 +3,7 @@
 # ruff: noqa: PTH109, PTH123
 from __future__ import annotations
 
+import fileinput
 import sys
 from contextlib import contextmanager
 from typing import IO, TYPE_CHECKING, Protocol
@@ -11,7 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
     from _typeshed import SupportsRead, SupportsWrite
-
 HEADER_ORDER = [
     "Package",
     "Version",
@@ -95,18 +95,30 @@ def write_headers(output: IO[str] | str | None, packages: Sequence[HasHeaders]) 
             file.write(format_headers(p.headers))
 
 
+class FileInputRead(fileinput.FileInput[str]):
+    """Implements a read(-1) function for FileInput."""
+
+    def read(self, n: int = -1) -> str:
+        """Read up to n characters from the file."""
+        if n != -1:
+            raise NotImplementedError("can only read fully")
+        return "".join(self)
+
+
 @contextmanager
 def multi_open_read(
-    input: IO[str] | str | None = None,  # noqa: A002
+    input: IO[str] | str | tuple[str, ...] | None = None,  # noqa: A002
 ) -> Generator[SupportsRead[str]]:
     """Open the provided file, file handle or stdin for reading."""
     if input is None:
         yield sys.stdin
-    elif isinstance(input, str):
-        with open(input) as file:
+        return
+
+    if isinstance(input, str | tuple):
+        with FileInputRead(files=input) as file:
             yield file
-    else:
-        yield input
+        return
+    yield input
 
 
 @contextmanager

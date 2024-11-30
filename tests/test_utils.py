@@ -12,6 +12,7 @@ import pytest
 
 from dpkg_scanpackages.utils import (
     DpkgInfoHeaders,
+    FileInputRead,
     format_headers,
     multi_open_read,
     multi_open_write,
@@ -77,14 +78,29 @@ def test_write_headers(
     assert output.getvalue() == example_content
 
 
+def test_fileinputread(tmp_path: Path) -> None:
+    (tmp_path / "test").write_bytes(b"test\n")
+    (tmp_path / "test2").write_bytes(b"test2\n")
+
+    with FileInputRead((str(tmp_path / "test"), str(tmp_path / "test2"))) as files:
+        assert files.read() == "test\ntest2\n"
+
+        with pytest.raises(NotImplementedError, match="^can only read fully$"):
+            files.read(1)
+
+
 def test_multi_open_read(tmp_path: Path) -> None:
     with multi_open_read(None) as file:
         assert file == sys.stdin
 
-    (tmp_path / "test").write_bytes(b"test")
+    (tmp_path / "test").write_bytes(b"test\n")
+    (tmp_path / "test2").write_bytes(b"test2\n")
 
     with multi_open_read(str(tmp_path / "test")) as file:
-        assert file.read() == "test"
+        assert file.read() == "test\n"
+
+    with multi_open_read((str(tmp_path / "test"), str(tmp_path / "test2"))) as files:
+        assert files.read() == "test\ntest2\n"
 
     read_buffer = StringIO("test_buffer")
 
