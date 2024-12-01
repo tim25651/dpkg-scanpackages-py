@@ -89,6 +89,23 @@ def test_fileinputread(tmp_path: Path) -> None:
             files.read(1)
 
 
+def test_fileinputread_fresh(tmp_path: Path) -> None:
+    (tmp_path / "test").write_bytes(b"test\n")
+    with FileInputRead(str(tmp_path / "test")) as file:
+        assert file.readline() == "test\n"
+        with pytest.raises(ValueError, match="^can only read fresh instances$"):
+            file.read()
+
+
+def test_fileinputread_newline(tmp_path: Path) -> None:
+    (tmp_path / "test").write_bytes(b"test\n")
+    (tmp_path / "test2").write_bytes(b"test2\n")
+    with FileInputRead(
+        (str(tmp_path / "test"), str(tmp_path / "test2")), True
+    ) as files:
+        assert files.read() == "test\n\ntest2\n"
+
+
 def test_multi_open_read(tmp_path: Path) -> None:
     with multi_open_read(None) as file:
         assert file == sys.stdin
@@ -100,7 +117,8 @@ def test_multi_open_read(tmp_path: Path) -> None:
         assert file.read() == "test\n"
 
     with multi_open_read((str(tmp_path / "test"), str(tmp_path / "test2"))) as files:
-        assert files.read() == "test\ntest2\n"
+        # uses add_newline=True by default from FileInputRead class
+        assert files.read() == "test\n\ntest2\n"
 
     read_buffer = StringIO("test_buffer")
 

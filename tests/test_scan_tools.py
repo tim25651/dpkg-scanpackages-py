@@ -16,7 +16,7 @@ from dpkg_scanpackages.scan_packages import (
     calculate_4mb_sha256,
     read_packages_file,
 )
-from dpkg_scanpackages.utils import DpkgInfoHeaders
+from dpkg_scanpackages.utils import DpkgInfoHeaders, multi_open_read
 
 if TYPE_CHECKING:
     from .conftest import Helpers
@@ -48,6 +48,12 @@ def test_read_packages_file(example_packages: list[dict[str, str]]) -> None:
         packages_ls = read_packages_file(fd)
 
     assert packages_ls == example_packages
+
+
+def test_read_packages_files_multiple(example_packages: list[dict[str, str]]) -> None:
+    with multi_open_read((str(EXAMPLE_PATH), str(EXAMPLE_PATH))) as files:
+        packages_ls = read_packages_file(files)
+    assert packages_ls == example_packages + example_packages
 
 
 def test_calculate_4mb_sha256(tmp_path: Path) -> None:

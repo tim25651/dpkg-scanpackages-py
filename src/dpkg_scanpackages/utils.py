@@ -8,6 +8,8 @@ import sys
 from contextlib import contextmanager
 from typing import IO, TYPE_CHECKING, Protocol
 
+from typing_extensions import override
+
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
@@ -95,14 +97,40 @@ def write_headers(output: IO[str] | str | None, packages: Sequence[HasHeaders]) 
             file.write(format_headers(p.headers))
 
 
-class FileInputRead(fileinput.FileInput[str]):
+class FileInputRead(fileinput.FileInput):
     """Implements a read(-1) function for FileInput."""
+
+    def __init__(self, files: str | tuple[str, ...], add_newline: bool = False) -> None:
+        """Initialize the FileInputRead class."""
+        super().__init__(files=files, encoding="utf-8")
+        self._sep = "\n" if add_newline else ""
+        self._fileno = 0
+        self._file_contents: list[str] = []
+        self._lines: list[str] | None = None
 
     def read(self, n: int = -1) -> str:
         """Read up to n characters from the file."""
         if n != -1:
             raise NotImplementedError("can only read fully")
-        return "".join(self)
+        if self._filelineno > 0 or self._fileno > 0:  # type: ignore[attr-defined]
+            raise ValueError("can only read fresh instances")
+
+        self._lines = []
+        for line in self:
+            self._lines.append(line)
+            # if a new file is opened `nextfile()` is called
+            # and shifts the content to _file_contents.
+        # at the end we concat all files contents.
+        return self._sep.join(self._file_contents)
+
+    @override
+    def nextfile(self) -> None:
+        """Close the current file and open the next one."""
+        if self._lines is not None:  # checks if read was called before
+            self._file_contents.append("".join(self._lines))
+            self._lines = []
+        self._fileno += 1
+        super().nextfile()
 
 
 @contextmanager
@@ -115,7 +143,7 @@ def multi_open_read(
         return
 
     if isinstance(input, str | tuple):
-        with FileInputRead(files=input) as file:
+        with FileInputRead(files=input, add_newline=True) as file:
             yield file
         return
     yield input
