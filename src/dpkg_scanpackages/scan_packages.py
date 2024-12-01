@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 from email import message_from_string
 from pathlib import Path
@@ -42,6 +43,8 @@ if TYPE_CHECKING:
 script_version = "0.4.1"
 
 FOUR_MB = 4 * 1024 * 1024
+
+logger = logging.getLogger(__package__)
 
 
 class DpkgInfo:
@@ -119,6 +122,7 @@ class DpkgScanPackages:
         arch: str | None = None,
         output: IO[str] | str | None = None,
         previous: IO[str] | str | tuple[str, ...] | None = None,
+        pbar: bool = True,
     ) -> None:
         """Initialize the class."""
         self.binary_path = binary_path
@@ -144,6 +148,8 @@ class DpkgScanPackages:
             }
             self.previous = dict(sorted(self.previous.items()))
 
+        self.pbar = pbar
+
     @staticmethod
     def _is_equal(curr: HasHeaders, prev: HasHeaders) -> bool:
         """Check if the file is equal to the previous."""
@@ -167,7 +173,8 @@ class DpkgScanPackages:
             for f in Path(self.binary_path).rglob(f"*.{self.package_type}")
         )
 
-        for fname in tqdm(files, desc="Scanning packages"):
+        reused, wrong_arch, older_version = 0, 0, 0
+        for fname in tqdm(files, desc="Scanning packages", disable=not self.pbar):
             # extract the package information
             size = os.path.getsize(fname)
             short_sha256 = calculate_4mb_sha256(fname, size)
@@ -175,17 +182,18 @@ class DpkgScanPackages:
             prev = self.previous.get(fname)
 
             if prev is not None and self._is_equal(curr, prev):
-                print("Reusing previous package info for", fname)  # noqa: T201
-                self.package_list.append(prev)
-                continue
-
-            pkg_info = DpkgInfo(fname, short_sha256)
+                logger.debug("Reusing previous package info for %s", fname)
+                reused += 1
+                pkg_info: DpkgInfoHeaders | DpkgInfo = prev
+            else:
+                pkg_info = DpkgInfo(fname, short_sha256)
 
             # if arch is defined and does not match package, move on to the next
             if (
                 self.arch is not None
                 and str(pkg_info.headers["Architecture"]) != self.arch
             ):
+                wrong_arch += 1
                 continue
 
             # if --multiversion switch is passed, append to the list
@@ -203,6 +211,7 @@ class DpkgScanPackages:
                     # add if not
                     self.package_list.append(pkg_info)
                 else:
+                    older_version += 1
                     # compare versions and add if newer
                     matched_index, matched_item = matched_items[0]
 
@@ -210,7 +219,22 @@ class DpkgScanPackages:
                     if dpkg.compare_version_with(matched_item.headers["Version"]) == 1:
                         self.package_list[matched_index] = pkg_info
                     else:  # pragma: no cover
-                        print("Skipping older version of", fname)  # noqa: T201
+                        logger.debug("Skipping older version of %s", fname)
+
+        previous_str = f"{reused} cache hits" if self.previous else "no cache"
+        older_versions_str = (
+            f"{older_version} older versions"
+            if self.multiversion
+            else "multiversion used"
+        )
+        logger.info(
+            "Checked %d [%s] (%s, %d wrong arch) -> %d final packages",
+            len(files),
+            previous_str,
+            older_versions_str,
+            wrong_arch,
+            len(self.package_list),
+        )
 
     def scan(
         self, return_list: bool = False
