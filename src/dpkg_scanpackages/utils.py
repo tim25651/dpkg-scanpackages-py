@@ -143,6 +143,9 @@ def multi_open_read(
         return
 
     if isinstance(input, str | tuple):
+        if not input:
+            raise ValueError("no input data provided")
+
         with FileInputRead(files=input, add_newline=True) as file:
             yield file
         return
