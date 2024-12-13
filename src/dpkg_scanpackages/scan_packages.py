@@ -138,7 +138,7 @@ class DpkgScanPackages:
         self.output = output
         self.package_list: list[DpkgInfo | DpkgInfoHeaders] = []
 
-        if previous is None:
+        if not previous:
             self.previous = {}
         else:
             with multi_open_read(previous) as fd:
